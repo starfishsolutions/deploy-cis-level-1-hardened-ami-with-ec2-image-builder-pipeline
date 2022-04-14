@@ -1,0 +1,100 @@
+#!/bin/bash
+
+    #Create Partitions
+    yum update -y
+    yum update --security -y
+    
+    #/tmp
+    dd if=/dev/zero of=/tmp.partition bs=1024 count=2000000
+    mke2fs /tmp.partition -F
+    mount -o loop,nosuid,nodev,rw /tmp.partition /tmp
+    chmod 3777 /tmp
+    echo "/tmp.partition /tmp ext2 loop,nosuid,nodev,rw 0 0" >> /etc/fstab
+
+    #/var/tmp
+    dd if=/dev/zero of=/var/tmp.partition bs=1024 count=2000000
+    mke2fs /var/tmp.partition -F
+    mount -o loop,nosuid,nodev,noexec,rw /var/tmp.partition /var/tmp
+    chmod 3777 /var/tmp
+    echo "/var/tmp.partition /var/tmp ext2 loop,nosuid,nodev,noexec,rw 0 0" >> /etc/fstab
+
+    #Execute Additional CIS hardening updates
+    echo install cramfs /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install freevxfs /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install jffs2 /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install hfs /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install hfsplus /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install squashfs /bin/true >> /etc/modprobe.d/CIS.conf
+    echo install udf /bin/true >> /etc/modprobe.d/CIS.conf
+    
+    echo "gpgcheck=1" >> /etc/yum.repos.d/CIS.conf
+    
+    yum remove aide -y
+    
+    net.ipv6.conf.all.accept_ra = 0
+    net.ipv6.conf.default.accept_ra = 0
+    net.ipv6.conf.all.accept_redirects = 0
+    net.ipv6.conf.default.accept_redirects = 0
+    
+    sysctl -w net.ipv6.conf.all.accept_ra=0
+    sysctl -w net.ipv6.conf.default.accept_ra=0
+    sysctl -w net.ipv6.conf.all.accept_redirects=0
+    sysctl -w net.ipv6.conf.default.accept_redirects=0
+    sysctl -w net.ipv6.route.flush=1
+
+    #1.4.2 Ensure bootloader password is set
+    printf '%s\n' "test" "test" | script -qf -c 'grub2-setpassword' /dev/null
+
+    #1.4.1 Ensure permissions on bootloader config are configured
+    chown root:root /boot/grub2/grub.cfg
+    chmod og-rwx /boot/grub2/grub.cfg
+    chown root:root /boot/grub2/user.cfg
+    chmod og-rwx /boot/grub2/user.cfg
+    
+    #3.3.3 Ensure IPv6 is disabled
+    sed -i.orig 's/GRUB_CMDLINE_LINUX=/GRUB_CMDLINE_LINUX=ipv6.disable=1/' /etc/default/grub
+    grub2-mkconfig > /boot/grub2/grub.cfg
+    
+    #3.6.2 Ensure default deny firewall policy
+    #iptables -P INPUT DROP
+    #iptables -P OUTPUT DROP
+    #iptables -P FORWARD DROP
+
+    
+    #3.6.3 Ensure loopback traffic is configured - input
+    iptables -A INPUT -i lo -j ACCEPT
+    iptables -A OUTPUT -o lo -j ACCEPT
+    iptables -A INPUT -s 127.0.0.0/8 -j DROP
+    
+    #4.2.1.5 Ensure remote rsyslog messages are only accepted on designated log hosts.
+    echo "#\$ModLoad imtcp" >>  /etc/rsyslog.conf
+    echo "#\$InputTCPServerRun 514"  >> /etc/rsyslog.conf
+
+    #5.2.14 Ensure SSH access is limited
+    #echo "AllowUsers jenkins,hobsons,ssm-user,rightscale,tomcat" >>  /etc/ssh/sshd_config
+    #echo "AllowGroups rightscale,rightscale_sudo" >>  /etc/ssh/sshd_config
+
+    #5.3.2 Ensure lockout for failed password attempts is configured - password-auth 'auth [default=die] pam_faillock.so'
+    echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+    echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/password-auth
+    echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+    echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+
+    echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+    echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/system-auth
+    echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+    echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+
+    #5.4.4 Ensure default user umask is 027 or more restrictive - /etc/bashrc
+    sed -i.orig 's/umask 002/umask 027/' /etc/bashrc
+    sed -i.orig 's/umask 23/umask 027/' /etc/bashrc
+
+    sed -i.orig 's/umask 002/umask 027/' /etc/profile
+    sed -i.orig 's/umask 23/umask 027/' /etc/profile
+
+   #3.4.2 Ensure /etc/hosts.allow is configured
+    echo 'ALL: ALL' > /etc/hosts.allow
+    #3.4.3 Ensure /etc/hosts.deny is configured
+    echo 'ALL: ALL' > /etc/hosts.deny
+    
+    exit 0
