@@ -3,7 +3,7 @@
     #Create Partitions
     yum update -y
     yum update --security -y
-    
+
     #/tmp
     dd if=/dev/zero of=/tmp.partition bs=1024 count=2000000
     mke2fs /tmp.partition -F
@@ -75,15 +75,15 @@
     #echo "AllowGroups rightscale,rightscale_sudo" >>  /etc/ssh/sshd_config
 
     #5.3.2 Ensure lockout for failed password attempts is configured - password-auth 'auth [default=die] pam_faillock.so'
-    echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/password-auth
-    echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/password-auth
-    echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
-    echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+    #echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+    #echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/password-auth
+    #echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
+    #echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/password-auth
 
-    echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/system-auth
-    echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/system-auth
-    echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
-    echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+    #echo "auth required pam_faillock.so preauth audit silent deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+    #echo "auth [success=1 default=bad] pam_unix.so" >> /etc/pam.d/system-auth
+    #echo "auth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
+    #echo "auth sufficient pam_faillock.so authsucc audit deny=5 unlock_time=900" >> /etc/pam.d/system-auth
 
     #5.4.4 Ensure default user umask is 027 or more restrictive - /etc/bashrc
     sed -i.orig 's/umask 002/umask 027/' /etc/bashrc
